@@ -40,6 +40,7 @@ exports.vote = async ctx => {
   try {
     const [ poll ] = await models.Poll.find({ _id: ObjectID(pollId) })
     if (!poll) throw new Error('no poll found')
+    if (poll.isClosed) throw Error('poll is closed')
 
     result.result = await poll.vote(userId, idArray)
   } catch (e) {
@@ -60,4 +61,22 @@ exports.getUserPollsInfo = async ctx => {
   }
 
   ctx.res.ok(result, `found ${result.length ? result.length : 0} polls`)
+}
+
+exports.closePoll = async ctx => {
+  const { pollId } = ctx.params
+  const result = {}
+
+  try {
+    const [ poll ] = await models.Poll.find({ _id: ObjectID(pollId) })
+    if (!poll) throw new Error('no poll found')
+    if (poll.isClosed)
+      result.result = poll
+    else
+      result.result = await poll.closePoll()
+  } catch (e) {
+    console.log(e)
+  }
+
+  ctx.res.ok(result, 'poll closed')
 }
