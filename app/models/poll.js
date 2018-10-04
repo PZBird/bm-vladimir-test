@@ -7,7 +7,9 @@
  *  @target - идентификатор свзанной внешней сущности, где:
  *  @target.model - указание на модель с которой установлена связь
  *  @target.item - идентификатор соответствующей записи из модели target.model
- *  @options - виртуальное поле, 
+ *  @isClosed - флаг указывающий на то, что опрос закрыт
+ *  @winnerOptions - результат с наибольшим количеством голосов
+ *  @options - виртуальное поле
  */
 
 const mongoose = require('mongoose')
@@ -30,7 +32,9 @@ const model = new mongoose.Schema(extend({
   target: { // привязка опроса к какой-либо внещней сущности, в данном случае – к постам
     model: { type: String, enum: targetModels },
     item: { type: Number } // тут тоже облегчил – убрал связь с сторонними моделями
-  }
+  },
+  isClosed: { type: Boolean, default: false },
+  winnerOption: { type: ObjectId, ref: 'PollOption' }
 }, is))
 
 model.index({ 'userId': 1 })
@@ -264,6 +268,45 @@ model.statics.getUserPollsInfo = function (userId, options = {}) {
       options: 1
     }}
   ])
+}
+
+/*
+ * closePoll - метод закрывает poll в контексте которого вызван
+ * дополнительно выбирает option с максимальным количеством голосов
+ * @returns {Poll}
+*/
+model.methods.closePoll = async function () {
+  const poll = this
+  const model = mongoose.models.Poll;
+  poll.isClosed = true;
+  const winnerOption = await model.aggregate([
+    { $match: { _id: poll._id } },
+    {
+      $lookup: {
+        from: 'polloptions',
+        localField: '_id',
+        foreignField: 'pollId',
+        as: 'options'
+      }
+    },
+    { $unwind: '$options' },
+    {
+      $match: {
+        'options.enabled': true
+      }
+    },
+    {
+      $project: {
+        _id: '$options._id',
+        votes: { $size: '$options.votes' },
+      },
+    },
+    { $sort: { "votes": -1 } },
+    { $limit: 1 }
+  ]);
+  poll.winnerOption = winnerOption[0]; 
+  await poll.save();
+  return poll
 }
 
 module.exports = mongoose.model('Poll', model)
