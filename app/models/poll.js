@@ -207,4 +207,68 @@ model.statics.getPostPolls = async function (params = {}) {
   }, {})
 }
 
+/*
+ * getUserPollsInfo - метод возвращает все сущности poll
+ * с детализацией по options, вне зависимости от их наличия
+ * в случае отсутствия options, ожидается, что options[0].votes = 0
+ * @param userId - идентификатор пользователя
+ * @param params - критерии фильтрации
+ * @param options - дополнительная группировка по пользователю
+ * @returns {Aggregate}
+*/
+model.statics.getUserPollsInfo = function (userId, params = {}, options = {}) {
+    const model = this
+  
+    return model.aggregate([
+      { $match: {
+          $and: {
+            userId,
+            params
+        }
+      }},
+      { $lookup: {
+        from: 'polloptions',
+        localField: '_id',
+        foreignField: 'pollId',
+        as: 'options'
+      }},
+      { $unwind:  { "path": "$options", "preserveNullAndEmptyArrays": true } },
+      { $match: {
+        $or: [{'options.enabled':true}, {'options.enabled': null}]
+      }},
+      { $project: {
+        _id: 1,
+        title: 1,
+        multi: 1,
+        target: 1,
+        options: {
+          _id: 1,
+          value: '$options.value',
+          votes: { $size: { $ifNull: [ '$options.votes', [] ] } },
+          isVoted: { $in: [ null, { $ifNull: [ '$options.votes', [] ] } ] }
+        }
+      }},
+      { $group: {
+        _id: {
+          _id: '$_id',
+          title: '$title',
+          multi: '$multi',
+          target: '$target'
+        },
+        options: { $push: '$options' },
+        votes: { $sum: '$options.votes' },
+        isVoted: { $push: '$options.isVoted' }
+      }},
+      { $project: {
+        _id: '$_id._id',
+        title: '$_id.title',
+        multi: '$_id.multi',
+        target: '$_id.target',
+        isVoted: { $in: [ true, '$isVoted' ] },
+        votes: 1,
+        options: 1
+      }}
+    ])
+  }
+
 module.exports = mongoose.model('Poll', model)
