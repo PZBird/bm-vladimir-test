@@ -130,7 +130,7 @@ model.methods.editOptions = async function (options = []) {
  * Возможна групировка по пользователю (через параметр options)
  * @param params - критерии фильтрации
  * @param options - дополнительная группировка по пользователю
- * @returns {Promise<any[]>}
+ * @returns {Aggregate}
 */
 model.statics.getPollInfo = function (params = {}, options = {}) {
   const model = this
