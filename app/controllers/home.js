@@ -48,3 +48,16 @@ exports.vote = async ctx => {
 
   ctx.res.ok(result, !result.result ? 'something went wrong' : 'voted')
 }
+
+exports.getUserPollsInfo = async ctx => {
+  const { userId } = ctx.params
+  const result = {}
+
+  try {
+    result.result = await models.Poll.getUserPollsInfo(userId)
+  } catch (e) {
+    console.log(e)
+  }
+
+  ctx.res.ok(result, `found ${result.length ? result.length : 0} polls`)
+}
