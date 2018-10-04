@@ -1,5 +1,13 @@
 /**
- * Тут комментируй
+ * схема сущности polls (опросы)
+ *  @userId - идентификатор связанного пользователя, обязательное поле
+ *  @votes - счетчик проголосовавших
+ *  @title - наименоване опроса, обязательное поле
+ *  @multi - флаг множественного ответа
+ *  @target - идентификатор свзанной внешней сущности, где:
+ *  @target.model - указание на модель с которой установлена связь
+ *  @target.item - идентификатор соответствующей записи из модели target.model
+ *  @options - виртуальное поле, 
  */
 
 const mongoose = require('mongoose')
@@ -36,6 +44,15 @@ model.virtual('options', {
 
 model.statics.PollOption = require('./option')
 
+/*
+ * makePoll - метод создания экземпляра сущности poll
+ * @param userId
+ * @param target
+ * @param options
+ * @param title
+ * @param multi
+ * @returns {poll}
+*/
 model.statics.makePoll = async function (userId, target = {}, options = [], title, multi = false) {
   const model = this
   if (!target.model || !target.item) throw new Error('no target specified')
@@ -47,6 +64,11 @@ model.statics.makePoll = async function (userId, target = {}, options = [], titl
   return poll
 }
 
+/*
+ * makePoll - метод создания options для объекта poll 
+ * @param options
+ * @returns {Promise<any[]>}
+*/
 model.methods.setOptions = function (options) {
   const poll = this
 
@@ -55,6 +77,11 @@ model.methods.setOptions = function (options) {
   )))
 }
 
+/*
+ * vote - метод создания options для объекта poll 
+ * @param options
+ * @returns {Promise<any[]>}
+*/
 model.methods.vote = function (userId, data = []) {
   const poll = this
 
@@ -68,6 +95,13 @@ model.methods.vote = function (userId, data = []) {
   )
 }
 
+/*
+ * vote - метод редактирования options для объекта poll 
+ * данный метод отключает все options не перечисленные в новом наборе
+ * также добавляет те значения из набора, которые отсутствуют
+ * @param options
+ * @returns {Promise<any[]>}
+*/
 model.methods.editOptions = async function (options = []) {
   const poll = this
 
@@ -91,6 +125,13 @@ model.methods.editOptions = async function (options = []) {
   return poll.setOptions(missed)
 }
 
+/*
+ * getPollInfo - метод возвращает агрегированную информацию по сущности poll
+ * Возможна групировка по пользователю (через параметр options)
+ * @param params - критерии фильтрации
+ * @param options - дополнительная группировка по пользователю
+ * @returns {Promise<any[]>}
+*/
 model.statics.getPollInfo = function (params = {}, options = {}) {
   const model = this
 
@@ -141,6 +182,14 @@ model.statics.getPollInfo = function (params = {}, options = {}) {
   ])
 }
 
+/*
+ * getPostPolls - метод возвращает информацию о polls
+ * связанных с конкретными Posts
+ * @param params - критерии фильтрации
+ * @param params.postId - массив или кокретный идентификатор сущности Post
+ * @param params.userId - идентификатор сущности User
+ * @returns {Object[]}
+*/
 model.statics.getPostPolls = async function (params = {}) {
   const model = this
   let match = {
