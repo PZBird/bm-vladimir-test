@@ -1,15 +1,15 @@
 /**
  * схема сущности polls (опросы)
- *  @userId - идентификатор связанного пользователя, обязательное поле
- *  @votes - счетчик проголосовавших
- *  @title - наименоване опроса, обязательное поле
- *  @multi - флаг множественного ответа
- *  @target - идентификатор свзанной внешней сущности, где:
- *  @target.model - указание на модель с которой установлена связь
- *  @target.item - идентификатор соответствующей записи из модели target.model
- *  @isClosed - флаг указывающий на то, что опрос закрыт
- *  @winnerOptions - результат с наибольшим количеством голосов
- *  @options - виртуальное поле
+ *  int @userId - идентификатор связанного пользователя, обязательное поле
+ *  string @votes - счетчик проголосовавших
+ *  bool @title - наименоване опроса, обязательное поле
+ *  bool @multi - флаг множественного ответа
+ *  {} @target - идентификатор свзанной внешней сущности, где:
+ *  string @target.model - указание на модель с которой установлена связь
+ *  int @target.item - идентификатор соответствующей записи из модели target.model
+ *  bool @isClosed - флаг указывающий на то, что опрос закрыт
+ *  {} @winnerOptions - результат с наибольшим количеством голосов
+ *  {} @options - виртуальное поле
  */
 
 const mongoose = require('mongoose')
@@ -40,6 +40,11 @@ const model = new mongoose.Schema(extend({
 model.index({ 'userId': 1 })
 model.index({ 'target.item': 1 })
 
+/**
+ * виртуальное поле options
+ * возращает связанные ответы
+ * @returns {options}
+ */
 model.virtual('options', {
   ref: 'PostPollOption',
   localField: '_id',
@@ -48,13 +53,13 @@ model.virtual('options', {
 
 model.statics.PollOption = require('./option')
 
-/*
+/**
  * makePoll - метод создания экземпляра сущности poll
- * @param userId
- * @param target
- * @param options
- * @param title
- * @param multi
+ * @param string userId
+ * @param {} target={}
+ * @param [] options=[]
+ * @param string title
+ * @param bool multi=false
  * @returns {poll}
 */
 model.statics.makePoll = async function (userId, target = {}, options = [], title, multi = false) {
@@ -68,9 +73,9 @@ model.statics.makePoll = async function (userId, target = {}, options = [], titl
   return poll
 }
 
-/*
+/**
  * makePoll - метод создания options для объекта poll 
- * @param options
+ * @param  {} options
  * @returns {Promise<any[]>}
 */
 model.methods.setOptions = function (options) {
@@ -81,9 +86,10 @@ model.methods.setOptions = function (options) {
   )))
 }
 
-/*
+/**
  * vote - метод создания options для объекта poll 
- * @param options
+ * @param  string userId
+ * @param  [] data=[]
  * @returns {Promise<any[]>}
 */
 model.methods.vote = function (userId, data = []) {
@@ -99,11 +105,11 @@ model.methods.vote = function (userId, data = []) {
   )
 }
 
-/*
+/**
  * vote - метод редактирования options для объекта poll 
  * данный метод отключает все options не перечисленные в новом наборе
  * также добавляет те значения из набора, которые отсутствуют
- * @param options
+ * @param [] options
  * @returns {Promise<any[]>}
 */
 model.methods.editOptions = async function (options = []) {
@@ -129,11 +135,11 @@ model.methods.editOptions = async function (options = []) {
   return poll.setOptions(missed)
 }
 
-/*
+/**
  * getPollInfo - метод возвращает агрегированную информацию по сущности poll
  * Возможна групировка по пользователю (через параметр options)
- * @param params - критерии фильтрации
- * @param options - проверка - проголосавал ли options.userId
+ * @param {} params - критерии фильтрации
+ * @param {} options - проверка - проголосавал ли options.userId
  * @returns {Aggregate}
 */
 model.statics.getPollInfo = function (params = {}, options = {}) {
@@ -186,12 +192,12 @@ model.statics.getPollInfo = function (params = {}, options = {}) {
   ])
 }
 
-/*
+/**
  * getPostPolls - метод возвращает информацию о polls
  * связанных с конкретными Posts
- * @param params - критерии фильтрации
- * @param params.postId - массив или кокретный идентификатор сущности Post
- * @param params.userId - идентификатор сущности User
+ * @param {} params - критерии фильтрации
+ * @param [] params.postId - массив или кокретный идентификатор сущности Post
+ * @param string params.userId - идентификатор сущности User
  * @returns {Object[]}
 */
 model.statics.getPostPolls = async function (params = {}) {
@@ -211,13 +217,12 @@ model.statics.getPostPolls = async function (params = {}) {
   }, {})
 }
 
-/*
+/**
  * getUserPollsInfo - метод возвращает все сущности poll
  * с детализацией по options, вне зависимости от их наличия
  * в случае отсутствия options, ожидается, что options[0].votes = 0
- * @param userId - идентификатор пользователя
- * @param params - критерии фильтрации
- * @param options - проверка - проголосавал ли options.userId
+ * @param string userId - идентификатор пользователя
+ * @param {} options - проверка - проголосавал ли options.userId
  * @returns {Aggregate}
 */
 model.statics.getUserPollsInfo = function (userId, options = {}) {
@@ -270,7 +275,7 @@ model.statics.getUserPollsInfo = function (userId, options = {}) {
   ])
 }
 
-/*
+/**
  * closePoll - метод закрывает poll в контексте которого вызван
  * дополнительно выбирает option с максимальным количеством голосов
  * @returns {Poll}
